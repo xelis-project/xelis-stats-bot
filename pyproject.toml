@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "xelis-stats-bot"
+version = "0.1.0"
+description = "XELIS Discord Stats bot"
+authors = ["Slixe <slixeprivate@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+discord = "^2.3.2"
+aiohttp = "^3.10.1"
+argparse = "^1.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
