@@ -42,22 +42,25 @@ async def update_channels(bot, conn, c):
     if guild:
         while True:
             logging.info("update channels")
+
+            # Cache requests to avoid hitting the API too frequently
+            requests_cache = {}
             try:
-                await update_channel(conn, c, guild, "Network:", "get_info", key="network")
-                await update_channel(conn, c, guild, "Block Time:", "get_info", key="average_block_time", convert_to_seconds=True, format_seconds=True)
-                await update_channel(conn, c, guild, "Block Reward:", "get_info", key="block_reward", is_block_reward=True)
-                await update_channel(conn, c, guild, "Max Supply:", "get_info", key="maximum_supply", convert_units=True)
-                await update_channel(conn, c, guild, "Circ Supply:", "get_info", key="circulating_supply", convert_units=True, is_circulating_supply=True)
-                await update_channel(conn, c, guild, "Net Hash:", "get_difficulty", key="hashrate_formatted")
-                await update_channel(conn, c, guild, "Coins Mined:", "get_info", key="circulating_supply", calculate_percentage=True)
-                await update_channel(conn, c, guild, "Price:", "get_price", key="price")
-                await update_channel(conn, c, guild, "Mcap:", "get_info", key="circulating_supply", calculate_market_cap=True)
+                await update_channel(conn, c, guild, "Network:", requests_cache, "get_info", key="network")
+                await update_channel(conn, c, guild, "Block Time:", requests_cache, "get_info", key="average_block_time", convert_to_seconds=True, format_seconds=True)
+                await update_channel(conn, c, guild, "Block Reward:", requests_cache, "get_info", key="block_reward", is_block_reward=True)
+                await update_channel(conn, c, guild, "Max Supply:", requests_cache, "get_info", key="maximum_supply", convert_units=True)
+                await update_channel(conn, c, guild, "Circ Supply:", requests_cache, "get_info", key="circulating_supply", convert_units=True, is_circulating_supply=True)
+                await update_channel(conn, c, guild, "Net Hash:", requests_cache, "get_difficulty", key="hashrate_formatted")
+                await update_channel(conn, c, guild, "Coins Mined:", requests_cache, "get_info", key="circulating_supply", calculate_percentage=True)
+                await update_channel(conn, c, guild, "Price:", requests_cache, "get_price", key="price")
+                await update_channel(conn, c, guild, "Mcap:", requests_cache, "get_info", key="circulating_supply", calculate_market_cap=True)
             except Exception as e:
                 logging.error(f"Error updating channels: {e}")
             await asyncio.sleep(400)
 
-async def update_channel(conn, c, guild, channel_name, method, key, convert_units=False, convert_to_seconds=False, format_seconds=False, is_circulating_supply=False, is_block_reward=False, calculate_percentage=False, calculate_market_cap=False):
-    data = await fetch_xelis_data(method)
+async def update_channel(conn, c, guild, channel_name, requests_cache, method, key, convert_units=False, convert_to_seconds=False, format_seconds=False, is_circulating_supply=False, is_block_reward=False, calculate_percentage=False, calculate_market_cap=False):
+    data = await fetch_xelis_data(requests_cache, method)
     value = "N/A"
     formatted_value = "N/A"
 
@@ -133,9 +136,14 @@ async def update_or_create_channel(conn, c, guild, channel_id, channel_name, new
     except Exception as e:
         logging.error(f"Error creating/updating channel {channel_name}: {e}")
 
-async def fetch_xelis_data(method):
+async def fetch_xelis_data(requests_cache, method):
+    if requests_cache.get(method):
+        logging.info(f"Using cached data for method {method}")
+        return requests_cache[method]
+
     if method == "get_price":
         return await fetch_price()
+
     url = "https://node.xelis.io/json_rpc"
     payload = {
         "jsonrpc": "2.0",
@@ -147,7 +155,9 @@ async def fetch_xelis_data(method):
         async with session.post(url, json=payload, headers=headers) as response:
             if response.status == 200:
                 result = await response.json()
-                return result.get("result", {})
+                data = result.get("result", {})
+                requests_cache[method] = data
+                return data
             else:
                 logging.error(f"Failed to fetch Xelis data for method {method}. Status code: {response.status}")
                 return {}
