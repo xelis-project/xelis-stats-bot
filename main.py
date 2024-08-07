@@ -41,6 +41,7 @@ async def update_channels(bot, conn, c):
     guild = bot.get_guild(GUILD_ID)
     if guild:
         while True:
+            logging.info("update channels")
             try:
                 await update_channel(conn, c, guild, "Network:", "get_info", key="network")
                 await update_channel(conn, c, guild, "Block Time:", "get_info", key="average_block_time", convert_to_seconds=True, format_seconds=True)
@@ -127,6 +128,8 @@ async def update_or_create_channel(conn, c, guild, channel_id, channel_name, new
             logging.warning(f"Rate limited. Retrying in {retry_after} seconds.")
             await asyncio.sleep(retry_after)
             await update_or_create_channel(guild, channel_id, channel_name, new_name)
+        else:
+            logging.error(f"HTTP Error creating/updating channel {channel_name}: {e}")
     except Exception as e:
         logging.error(f"Error creating/updating channel {channel_name}: {e}")
 
